@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -24,6 +25,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => 'Unauthorized Access, You do not have the required permission',
                 'status'  => 403,
             ], 403);
+        });
+        $exceptions->render(function (ThrottleRequestsException $e, $request) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many attempt, Please try again after a few minutes',
+                'status'  => 429,
+            ], 429);
         });
         $exceptions->render(function (NotFoundHttpException $e, $request) {
             return response()->json([

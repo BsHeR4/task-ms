@@ -1,5 +1,9 @@
 # Task-ms (Advanced Laravel API Architecture with Laravel 12, Sanctum and Redis)
 
+[![PHP Version](https://img.shields.io/badge/php-%3E=8.1-8892BF.svg)](https://php.net/)
+[![Laravel Version](https://img.shields.io/badge/laravel-12.x-FF2D20.svg)](https://laravel.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 This project establishes a highly scalable, secure, and performant API platform. It is engineered around clear **Separation of Concerns (SoC)**, employing a robust **Layered Architecture** (Presentation, Business, Data) to maximize maintainability, ease of testing, and operational efficiency.
 
 ## Architectural Principles & Design Decisions
@@ -57,10 +61,10 @@ The `TaskPolicy` strictly controls access. Authorization checks (`$this->authori
 ## Deployment and Execution
 
 ### Prerequisites
-* PHP 8.2+
+* PHP 8.1+
 * Composer
 * Relational Database (e.g., MySQL 8+)
-* Redis (Required for the `CACHE_DRIVER=redis` implementation)
+* Redis (Required for the `CACHE_STORE=redis` implementation)
 
 ### Setup Instructions
 
@@ -82,7 +86,7 @@ The `TaskPolicy` strictly controls access. Authorization checks (`$this->authori
 
     ```env
     # Ensure Redis is configured for tagged caching functionality
-    CACHE_DRIVER=redis 
+    CACHE_STORE=redis 
     REDIS_HOST=127.0.0.1 
     
     # Database connection details
@@ -103,6 +107,8 @@ The `TaskPolicy` strictly controls access. Authorization checks (`$this->authori
     php artisan serve
     ```
 
+5.  **Interact with the API**:
+    Use Postman to test the various endpoints. Get the collection from [here](https://documenter.getpostman.com/view/33882685/2sB3dSP8dD).
 ---
 
 ## Testing Credentials
@@ -118,3 +124,7 @@ The `UserSeeder` has created two dedicated test accounts, each dynamically assig
 1.  Log in as `bsher` to obtain an API Token.
 2.  Use this Token to fetch tasks (GET `/v1/tasks`).
 3.  Attempt to fetch a specific task ID that belongs to `mohammed`. The API should return a `404 Not Found` or `403 Forbidden` error due to the combined enforcement of the **`UserOwnershipScope`** and **`TaskPolicy`**.
+
+## 📜 License
+
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
