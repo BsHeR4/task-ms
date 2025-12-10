@@ -50,6 +50,28 @@ abstract class Controller
         return $this->apiResponse(false, $message, $data, $statusCode);
     }
 
+    /**
+     * Standardized paginate response.
+     *
+     * @param \Illuminate\Pagination\LengthAwarePaginator $paginateData
+     * @param string $message
+     * @return \Illuminate\Http\JsonResponse
+     */
+    protected static function paginate($paginateData, $message = 'Data retrieved successfully')
+    {
+        return response()->json([
+            'status' => 'success',
+            'message' => $message,
+            'data' => $paginateData->items(),
+            'meta' => [
+                'current_page' => $paginateData->currentPage(),
+                'per_page' => $paginateData->perPage(),
+                'total' => $paginateData->total(),
+                'last_page' => $paginateData->lastPage()
+            ]
+        ], 200);
+    }
+
     //-------------------------------- AUTH --------------------------------//
 
     /**
