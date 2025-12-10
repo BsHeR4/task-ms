@@ -1,59 +1,120 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Task-ms (Advanced Laravel API Architecture with Laravel 12, Sanctum and Redis)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project establishes a highly scalable, secure, and performant API platform. It is engineered around clear **Separation of Concerns (SoC)**, employing a robust **Layered Architecture** (Presentation, Business, Data) to maximize maintainability, ease of testing, and operational efficiency.
 
-## About Laravel
+## Architectural Principles & Design Decisions
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The design prioritizes three core objectives: data security, high read performance via caching, and code clarity through abstraction.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 1. Data Layer Security and Abstraction
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+The Model Layer is fortified to ensure access control is an inherent property of the data itself.
 
-## Learning Laravel
+| Component | Rationale & Implementation | Architectural Impact |
+| :--- | :--- | :--- |
+| **Global Ownership Scope (`UserOwnershipScope`)** | **Decision:** To enforce Row-Level Security (RLS). The scope is registered within the `Task` model's `booted()` method, automatically injecting `WHERE user_id = Auth::id()` into all queries. | **Security Assurance:** Eliminates the risk of horizontal privilege escalation, ensuring users only access their own data without relying on controller-level checks. |
+| **Custom Query Builder (`TaskBuilder`)** | **Decision:** To abstract complex data retrieval logic. The `TaskBuilder` centralizes filtering (e.g., `filter()`, `search()`) logic, adhering to the **Repository Pattern** principle. | **Code Quality:** Provides a clean, fluent interface (`Task::query()->filter(...)`) for data access, decoupling data query specifics from the Service Layer. |
+| **Factories and Seeding** | **Decision:** Implement dedicated factories (`TaskFactory`) and seeders (`UserSeeder`) to populate the database with controlled, high-fidelity test data. **`UserSeeder`** uses `hasTasks(rand(3, 7))` to ensure every test user has a unique set of owned tasks. | **Testing Integrity:** Guarantees reliable data ownership scenarios for robust testing of security scopes and policies. |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 2. Business Layer Performance & Consistency
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The Service Layer manages business logic and employs an advanced caching strategy to optimize read performance while guaranteeing data consistency.
 
-## Laravel Sponsors
+#### Tag-Driven Cache Invalidation
+The strategy utilizes Redis to manage caches via tags, ensuring immediate consistency across the application state after any mutation.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+* **Cache Strategy**: The `TaskService` generates unique cache keys by hashing all request parameters (`filters`, `pagination`, and crucially, the **`Auth::id()`**). Data is stored with two tags: a global tag (`tasks`) and a specific tag (`task_{id}`).
+* **Automatic Invalidation**: The `AutoFlushCache` trait, linked to the `Task` model's lifecycle events (`saved`, `deleted`), automatically flushes these tags:
+    * **Single-Item Flush**: `task_{id}` tag is cleared.
+    * **List Flush (Ripple Effect)**: The global `tasks` tag is cleared, forcing subsequent list requests to rebuild their cache. 
 
-### Premium Partners
+#### Optimized Retrieval Path
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+* **Decision**: `TaskController@show` accepts an `int $id` instead of using Route Model Binding (`Task $task`).
+* **Rationale**: This forces the request through `TaskService::getById($id)`, enabling a **Cache-First** approach. The service checks Redis; if a hit occurs, **zero database queries are executed**, significantly boosting the performance of read operations.
 
-## Contributing
+### 3. Presentation Layer (API Endpoints)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+The Controllers are minimalist, acting primarily as marshals that validate input, enforce policies, and delegate tasks to the Service Layer.
 
-## Code of Conduct
+#### Strict Authorization (Policies)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+The `TaskPolicy` strictly controls access. Authorization checks (`$this->authorize(...)`) are implemented in every controller method, ensuring that only users who pass the policy check can proceed with the operation.
 
-## Security Vulnerabilities
+* **`viewAny` & `create`**: Checked against the class (`Task::class`).
+* **`view`, `update`, `delete`**: Checked against the model instance (`$task`) for ownership verification.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### API Resource Endpoints
 
-## License
+| Endpoint | HTTP Method | Data Flow & Security Constraints | Policy Check |
+| :--- | :--- | :--- | :--- |
+| `/v1/register` | `POST` | New User Creation (`AuthService`). Throttled. | N/A |
+| `/v1/login` | `POST` | Token Issuance (`AuthService`). Throttled. | N/A |
+| `/v1/tasks` | `GET` | Paginated and filtered list. Query execution leverages `TaskBuilder` and is restricted by `UserOwnershipScope`. | `viewAny` |
+| `/v1/tasks/{id}` | `GET` | Cache-First retrieval via `TaskService`. | `view` (Ownership check) |
+| `/v1/tasks/{id}` | `PUT/PATCH`| Update operation via `TaskService`. Triggers automatic cache invalidation. | `update` (Ownership check) |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Deployment and Execution
+
+### Prerequisites
+* PHP 8.2+
+* Composer
+* Relational Database (e.g., MySQL 8+)
+* Redis (Required for the `CACHE_DRIVER=redis` implementation)
+
+### Setup Instructions
+
+1.  **Clone & Install Dependencies:**
+
+    ```bash
+    git clone https://github.com/BsHeR4/task-ms.git
+    composer install
+    ```
+
+2.  **Environment Configuration:**
+
+    ```bash
+    cp .env.example .env
+    php artisan key:generate
+    ```
+
+    Verify the following configuration in your `.env` for production readiness:
+
+    ```env
+    # Ensure Redis is configured for tagged caching functionality
+    CACHE_DRIVER=redis 
+    REDIS_HOST=127.0.0.1 
+    
+    # Database connection details
+    DB_CONNECTION=mysql 
+    ```
+
+3.  **Database Migration and Seeding:**
+
+    Run the migrations and then execute the seeder to populate the database with the predefined test accounts and their tasks.
+
+    ```bash
+    php artisan migrate --seed
+    ```
+
+4.  **Run Development Server:**
+
+    ```bash
+    php artisan serve
+    ```
+
+---
+
+## Testing Credentials
+
+The `UserSeeder` has created two dedicated test accounts, each dynamically assigned 3 to 7 unique tasks. These accounts are essential for testing the full lifecycle of the **Task Management Module** and verifying the strict security constraints enforced by the **`UserOwnershipScope`**.
+
+| User | Email | Password |
+| :--- | :--- | :--- |
+| **bsher** | `bsher@gmail.com` | `passWord@12` |
+| **mohammed** | `mohammed@gmail.com` | `passWord@12` |
+
+**Testing Recommendation:**
+1.  Log in as `bsher` to obtain an API Token.
+2.  Use this Token to fetch tasks (GET `/v1/tasks`).
+3.  Attempt to fetch a specific task ID that belongs to `mohammed`. The API should return a `404 Not Found` or `403 Forbidden` error due to the combined enforcement of the **`UserOwnershipScope`** and **`TaskPolicy`**.
