@@ -8,6 +8,7 @@ use App\Models\Builders\TaskBuilder;
 use App\Models\Scopes\UserOwnershipScope;
 use App\Traits\AutoFlushCache;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -30,7 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Task extends Model implements CacheInvalidatable
 {
-    use AutoFlushCache;
+    use AutoFlushCache, HasFactory;
 
     protected $fillable = [
         'title',
