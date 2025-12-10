@@ -80,7 +80,7 @@ abstract class Controller
     {
         return response()->json([
             'status' => true,
-            'message' => 'Register successfully, verification link have been sent to your email',
+            'message' => 'Registered successfully',
             'data' => $data,
             'code' => 201,
         ], 201);
