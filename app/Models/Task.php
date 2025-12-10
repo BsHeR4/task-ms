@@ -7,9 +7,27 @@ use App\Enums\TaskStatus;
 use App\Models\Builders\TaskBuilder;
 use App\Models\Scopes\UserOwnershipScope;
 use App\Traits\AutoFlushCache;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * App\Models\Task
+ *
+ * Represents a task made by a User.
+ *
+ * @property int $id
+ * @property string $title task title
+ * @property string $description the description of the task
+ * @property string $status Status of the task (pending, in_progress, done).
+ * @property int $user_id the task owner
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ *
+ * @property-read \App\Models\User $user
+ *
+ * @method static TaskBuilder|static query()
+ */
 class Task extends Model implements CacheInvalidatable
 {
     use AutoFlushCache;
