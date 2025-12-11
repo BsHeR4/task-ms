@@ -42,7 +42,7 @@ class TaskService
      * @param int $perPage Items per page.
      * @return LengthAwarePaginator
      */
-    public function list(array $filters, int $perPage = 15): LengthAwarePaginator
+    public function list(array $filters, int $perPage = 5): LengthAwarePaginator
     {
         // 1. Normalize Filters:
         // We sort by key so that requests like ?status=done&page=1
