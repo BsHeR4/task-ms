@@ -125,6 +125,17 @@ The `UserSeeder` has created two dedicated test accounts, each dynamically assig
 2.  Use this Token to fetch tasks (GET `/v1/tasks`).
 3.  Attempt to fetch a specific task ID that belongs to `mohammed`. The API should return a `404 Not Found` or `403 Forbidden` error due to the combined enforcement of the **`UserOwnershipScope`** and **`TaskPolicy`**.
 
-## 📜 License
+## API Response Handling: Architectural Note
+
+While Laravel Resource Collections were specified as a requirement, I opted for a customized, centralized response pattern using a **Base Controller** with helper methods (`successResponse`, `errorResponse`, `paginate`, etc.).
+
+**Reasoning for this alternative approach:**
+
+1.  **Performance Optimization:** In systems focused on high throughput, introducing an additional layer of abstraction (Resources) can occasionally contribute to minor performance overhead. By handling data formatting directly through controlled helper methods, the response generation is streamlined.
+2. **Consistency and Simplicity:** This approach guarantees a unified and predictable JSON structure for all API endpoints, including standardized error handling and comprehensive pagination metadata, which simplifies consumption by the ReactJS frontend.
+
+#### The custom helper methods serve the same core purpose as Resource Collections — ensuring data consistency and separation of concerns — but within a more direct response structure.
+
+## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
